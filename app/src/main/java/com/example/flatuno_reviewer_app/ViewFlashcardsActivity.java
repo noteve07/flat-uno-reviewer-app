@@ -1,5 +1,7 @@
 package com.example.flatuno_reviewer_app;
 
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -7,6 +9,7 @@ import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 import android.graphics.Color;
@@ -18,6 +21,8 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
 import java.util.ArrayList;
 import java.util.List;
+import com.example.flatuno_reviewer_app.database.FlashcardDbHelper;
+import com.example.flatuno_reviewer_app.models.Flashcard;
 
 public class ViewFlashcardsActivity extends AppCompatActivity {
     private ViewPager2 viewPager;
@@ -28,11 +33,17 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
     private MaterialButton addFirstCardButton;
     private String currentTopic;
     private String topicColor;
+    private FlashcardDbHelper dbHelper;
+    private SQLiteDatabase database;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_flashcards);
+
+        // Initialize database
+        dbHelper = new FlashcardDbHelper(this);
+        database = dbHelper.getReadableDatabase();
 
         // Initialize views
         viewPager = findViewById(R.id.flashcards_viewpager);
@@ -51,12 +62,18 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
         // Apply topic color to UI elements
         if (topicColor != null) {
             int color = Color.parseColor(topicColor);
-            addCardButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
-            addFirstCardButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(color));
+            // Make button color match the front card's darker shade
+            float[] hsv = new float[3];
+            Color.colorToHSV(color, hsv);
+            hsv[2] = Math.max(0.0f, hsv[2] * 0.85f); // Same brightness reduction as front card
+            int darkerColor = Color.HSVToColor(hsv);
+            
+            addCardButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(darkerColor));
+            addFirstCardButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(darkerColor));
         }
 
-        // Load sample flashcards based on topic
-        flashcards = getSampleFlashcards(currentTopic);
+        // Load flashcards from database
+        flashcards = getFlashcardsFromDatabase(currentTopic);
         
         // Set up adapter with topic color
         adapter = new FlashcardAdapter(flashcards, topicColor);
@@ -69,8 +86,19 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
         addCardButton.setOnClickListener(v -> showAddCardDialog());
         addFirstCardButton.setOnClickListener(v -> showAddCardDialog());
         
-        MaterialButton finishButton = findViewById(R.id.finish_button);
+        Button finishButton = findViewById(R.id.finish_button);
         finishButton.setOnClickListener(v -> finish());
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (database != null && database.isOpen()) {
+            database.close();
+        }
+        if (dbHelper != null) {
+            dbHelper.close();
+        }
     }
 
     private void updateEmptyState() {
@@ -85,94 +113,133 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
         }
     }
 
+    private void showCustomToast(String message) {
+        View layout = getLayoutInflater().inflate(R.layout.custom_toast, null);
+        TextView text = layout.findViewById(R.id.toast_text);
+        text.setText(message);
+
+        android.widget.Toast toast = new android.widget.Toast(getApplicationContext());
+        toast.setGravity(android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL, 0, 200);
+        toast.setDuration(android.widget.Toast.LENGTH_SHORT);
+        toast.setView(layout);
+        toast.show();
+    }
+
     private void showAddCardDialog() {
-        // TODO: Implement add card dialog
-        // For now, just add a sample card
-        flashcards.add(new Flashcard(
-            "Sample description for " + currentTopic,
-            "Sample term"
-        ));
-        adapter.notifyItemInserted(flashcards.size() - 1);
-        updateEmptyState();
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_add_flashcard_card);
+
+        // Initialize views
+        com.google.android.material.textfield.TextInputEditText termInput = dialog.findViewById(R.id.term_input);
+        com.google.android.material.textfield.TextInputEditText descriptionInput = dialog.findViewById(R.id.description_input);
+        com.google.android.material.button.MaterialButton cancelButton = dialog.findViewById(R.id.cancel_button);
+        com.google.android.material.button.MaterialButton addButton = dialog.findViewById(R.id.add_button);
+
+        // Set up button listeners
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+        addButton.setOnClickListener(v -> {
+            String term = termInput.getText().toString().trim();
+            String description = descriptionInput.getText().toString().trim();
+
+            if (term.isEmpty()) {
+                termInput.setError("Please enter a term");
+                return;
+            }
+
+            if (description.isEmpty()) {
+                descriptionInput.setError("Please enter a description");
+                return;
+            }
+
+            // Get topic ID
+            long topicId = getTopicId(currentTopic);
+            if (topicId == -1) {
+                showCustomToast("Error: Topic not found");
+                return;
+            }
+
+            // Add new flashcard to database
+            com.example.flatuno_reviewer_app.database.InitializeData initializeData = 
+                new com.example.flatuno_reviewer_app.database.InitializeData(this);
+            long flashcardId = initializeData.insertFlashcard(initializeData.database, topicId, term, description);
+            
+            if (flashcardId != -1) {
+                // Create new flashcard object
+                Flashcard newCard = new Flashcard(topicId, term, description);
+                newCard.setId(flashcardId);
+                newCard.setCreatedAt(System.currentTimeMillis());
+                newCard.setLastReviewed(System.currentTimeMillis());
+                newCard.setColor(topicColor);
+
+                // Add to list and update UI using the adapter's method
+                adapter.addFlashcard(newCard);
+                // Move to the last card (newly added card)
+                viewPager.setCurrentItem(flashcards.size() - 1, true);
+                updateEmptyState();
+                dialog.dismiss();
+                showCustomToast("Flashcard added successfully");
+            } else {
+                showCustomToast("Failed to add flashcard");
+            }
+        });
+
+        dialog.show();
     }
 
-    private List<Flashcard> getSampleFlashcards(String topic) {
-        List<Flashcard> cards = new ArrayList<>();
-        
-        switch (topic) {
-            case "OOP Concepts":
-                cards.add(new Flashcard(
-                    "The bundling of data and methods that operate on that data within a single unit (class)",
-                    "Encapsulation"
-                ));
-                cards.add(new Flashcard(
-                    "A mechanism that allows a class to inherit properties and methods from another class",
-                    "Inheritance"
-                ));
-                cards.add(new Flashcard(
-                    "The ability of an object to take many forms and behave differently based on the context",
-                    "Polymorphism"
-                ));
-                cards.add(new Flashcard(
-                    "Hiding complex implementation details and showing only necessary features",
-                    "Abstraction"
-                ));
-                break;
+    private long getTopicId(String topicName) {
+        Cursor cursor = database.query(
+            FlashcardDbHelper.TABLE_TOPICS,
+            new String[]{"id"},
+            "name = ?",
+            new String[]{topicName},
+            null,
+            null,
+            null
+        );
 
-            case "German Verbs":
-                cards.add(new Flashcard(
-                    "The German verb meaning 'to be'",
-                    "sein"
-                ));
-                cards.add(new Flashcard(
-                    "The German verb meaning 'to have'",
-                    "haben"
-                ));
-                cards.add(new Flashcard(
-                    "The German verb meaning 'to go'",
-                    "gehen"
-                ));
-                cards.add(new Flashcard(
-                    "The German verb meaning 'to come'",
-                    "kommen"
-                ));
-                break;
-
-            case "Rizal's Poems":
-                cards.add(new Flashcard(
-                    "The title of Rizal's poem about his love for his country",
-                    "Mi Ultimo Adios"
-                ));
-                cards.add(new Flashcard(
-                    "The meaning of 'Mi Ultimo Adios' in English",
-                    "My Last Farewell"
-                ));
-                cards.add(new Flashcard(
-                    "The place where 'Mi Ultimo Adios' was written",
-                    "Fort Santiago"
-                ));
-                cards.add(new Flashcard(
-                    "The date when 'Mi Ultimo Adios' was written",
-                    "December 30, 1896"
-                ));
-                break;
-
-            default:
-                // No sample cards for other topics
-                break;
+        long topicId = -1;
+        if (cursor.moveToFirst()) {
+            topicId = cursor.getLong(cursor.getColumnIndexOrThrow("id"));
         }
-        
-        return cards;
+        cursor.close();
+        return topicId;
     }
 
-    private static class Flashcard {
-        String description;
-        String term;
+    private List<Flashcard> getFlashcardsFromDatabase(String topicName) {
+        List<Flashcard> flashcardList = new ArrayList<>();
+        
+        // First get the topic ID
+        long topicId = getTopicId(topicName);
+        if (topicId == -1) return flashcardList;
 
-        Flashcard(String description, String term) {
-            this.description = description;
-            this.term = term;
+        // Query flashcards for this topic
+        Cursor cursor = database.query(
+            FlashcardDbHelper.TABLE_FLASHCARDS,
+            null,
+            "topic_id = ?",
+            new String[]{String.valueOf(topicId)},
+            null,
+            null,
+            "created_at DESC"
+        );
+
+        while (cursor.moveToNext()) {
+            Flashcard flashcard = new Flashcard(
+                cursor.getLong(cursor.getColumnIndexOrThrow("topic_id")),
+                cursor.getString(cursor.getColumnIndexOrThrow("term")),
+                cursor.getString(cursor.getColumnIndexOrThrow("description"))
+            );
+            flashcard.setId(cursor.getLong(cursor.getColumnIndexOrThrow("id")));
+            flashcard.setCreatedAt(cursor.getLong(cursor.getColumnIndexOrThrow("created_at")));
+            flashcard.setLastReviewed(cursor.getLong(cursor.getColumnIndexOrThrow("last_reviewed")));
+            flashcard.setColor(cursor.getString(cursor.getColumnIndexOrThrow("color")));
+            flashcardList.add(flashcard);
         }
+        cursor.close();
+        
+        return flashcardList;
     }
 
     private class FlashcardAdapter extends androidx.recyclerview.widget.RecyclerView.Adapter<FlashcardAdapter.ViewHolder> {
@@ -186,6 +253,17 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
             this.cardColor = color;
         }
 
+        public void addFlashcard(Flashcard flashcard) {
+            int position = flashcards.size();
+            flashcards.add(flashcard);
+            // Create new array with increased size
+            boolean[] newIsFlipped = new boolean[flashcards.size()];
+            // Copy existing values
+            System.arraycopy(isFlipped, 0, newIsFlipped, 0, isFlipped.length);
+            isFlipped = newIsFlipped;
+            notifyItemInserted(position);
+        }
+
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             View view = LayoutInflater.from(parent.getContext())
@@ -196,8 +274,8 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
             Flashcard card = flashcards.get(position);
-            holder.frontText.setText(card.description);
-            holder.backText.setText(card.term);
+            holder.frontText.setText(card.getDescription());
+            holder.backText.setText(card.getTerm());
 
             // Set card background colors
             if (cardColor != null) {
@@ -205,12 +283,12 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
                 // Make front slightly darker for better contrast
                 float[] hsv = new float[3];
                 Color.colorToHSV(color, hsv);
-                hsv[2] = Math.max(0.0f, hsv[2] * 0.95f); // Slightly decrease brightness
+                hsv[2] = Math.max(0.0f, hsv[2] * 0.85f); // Slightly decrease brightness
                 holder.frontView.setBackgroundColor(Color.HSVToColor(hsv));
                 
                 // Create a darker shade for the back
                 hsv[1] = Math.min(1.0f, hsv[1] * 1.2f); // Increase saturation
-                hsv[2] = Math.max(0.0f, hsv[2] * 0.8f); // Decrease brightness
+                hsv[2] = Math.max(0.0f, hsv[2] * 0.85f); // Decrease brightness
                 holder.backView.setBackgroundColor(Color.HSVToColor(hsv));
             }
 
@@ -223,14 +301,18 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
             holder.itemView.setOnClickListener(v -> {
                 if (isFlipped[position]) {
                     // Flip back
-                    holder.frontView.setVisibility(View.VISIBLE);
-                    holder.backView.setVisibility(View.GONE);
                     holder.itemView.startAnimation(new FlipAnimation(180, 0, holder.itemView));
+                    holder.itemView.postDelayed(() -> {
+                        holder.frontView.setVisibility(View.VISIBLE);
+                        holder.backView.setVisibility(View.GONE);
+                    }, 100);
                 } else {
                     // Flip to back
-                    holder.frontView.setVisibility(View.GONE);
-                    holder.backView.setVisibility(View.VISIBLE);
                     holder.itemView.startAnimation(new FlipAnimation(0, 180, holder.itemView));
+                    holder.itemView.postDelayed(() -> {
+                        holder.frontView.setVisibility(View.GONE);
+                        holder.backView.setVisibility(View.VISIBLE);
+                    }, 100);
                 }
                 isFlipped[position] = !isFlipped[position];
             });
@@ -275,7 +357,6 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
         public void initialize(int width, int height, int parentWidth, int parentHeight) {
             super.initialize(width, height, parentWidth, parentHeight);
             camera = new Camera();
-            // Set a smaller distance for less perspective distortion
             camera.setLocation(0, 0, -8 * getResources().getDisplayMetrics().density);
         }
 
@@ -286,17 +367,17 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
             final Matrix matrix = t.getMatrix();
             camera.save();
             
-            // Apply 3D rotation
             camera.rotateY(degrees);
             camera.getMatrix(matrix);
             camera.restore();
             
-            // Center the rotation
             matrix.preTranslate(-view.getWidth() / 2, -view.getHeight() / 2);
             matrix.postTranslate(view.getWidth() / 2, view.getHeight() / 2);
-            
-            // Apply perspective with reduced scaling
             matrix.preScale(1, 1, view.getWidth() / 2, view.getHeight() / 2);
+            
+            if (degrees > 90 || degrees < -90) {
+                matrix.preScale(-1, 1, view.getWidth() / 2, view.getHeight() / 2);
+            }
         }
     }
 } 

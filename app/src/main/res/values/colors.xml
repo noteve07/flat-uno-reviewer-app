@@ -4,4 +4,48 @@
     <color name="white">#FFFFFFFF</color>
     <color name="toolbar_color">#B44141</color>
     <color name="navbar_color">#fffbfa</color>
+
+    <!-- Modern Pastel Colors -->
+    <color name="topic_pink">#E8A5A5</color>      <!-- Soft Dusty Rose -->
+    <color name="topic_green">#A8D8B9</color>     <!-- Sage Green -->
+    <color name="topic_blue">#A5C1E8</color>      <!-- Powder Blue -->
+    <color name="topic_yellow">#E8D8A5</color>    <!-- Warm Sand -->
+    <color name="topic_purple">#D8A5E8</color>    <!-- Soft Lavender -->
+    <color name="topic_orange">#E8C1A5</color>    <!-- Peach -->
+    <color name="topic_mint">#A5E8D8</color>      <!-- Seafoam -->
+    <color name="topic_lavender">#C1A5E8</color>  <!-- Periwinkle -->
+    <color name="topic_lime">#D8E8A5</color>      <!-- Soft Chartreuse -->
+    <color name="topic_peach">#E8B5A5</color>     <!-- Coral -->
+
+    <!-- Topic Colors -->
+    <color name="color_pink">#E8A5A5</color>
+    <color name="color_green">#A8D8B9</color>
+    <color name="color_blue">#A5C1E8</color>
+    <color name="color_yellow">#E8D8A5</color>
+    <color name="color_purple">#D8A5E8</color>
+    <color name="color_orange">#E8C1A5</color>
+    <color name="color_mint">#A5E8D8</color>
+    <color name="color_lavender">#C1A5E8</color>
+    <color name="color_lime">#D8E8A5</color>
+    <color name="color_peach">#E8B5A5</color>
+
+    <!-- Selected Topic Colors (Darker Versions) -->
+    <color name="color_pink_selected">#D89595</color>
+    <color name="color_green_selected">#98C8A9</color>
+    <color name="color_blue_selected">#95B1D8</color>
+    <color name="color_yellow_selected">#D8C895</color>
+    <color name="color_purple_selected">#C895D8</color>
+    <color name="color_orange_selected">#D8B195</color>
+    <color name="color_mint_selected">#95D8C8</color>
+    <color name="color_lavender_selected">#B195D8</color>
+    <color name="color_lime_selected">#C8D895</color>
+    <color name="color_peach_selected">#D8A595</color>
+
+    <color name="correct_green">#3b8f3e</color>
+    <color name="incorrect_red">#b02a20</color>
+    <color name="warning_yellow">#f5a207</color>
+    <color name="quiz_button_color">#9e483f</color>
+    <color name="success_green">#4CAF50</color>
+    <color name="error_red">#b02a20</color>
+    <color name="dark_gray">#424242</color>
 </resources>

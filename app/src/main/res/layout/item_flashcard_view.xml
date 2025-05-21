@@ -69,11 +69,6 @@
                     android:textColor="@android:color/white"
                     android:alpha="0.7" />
             </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/card_gradient" />
         </FrameLayout>
     </androidx.cardview.widget.CardView>
 </FrameLayout> 

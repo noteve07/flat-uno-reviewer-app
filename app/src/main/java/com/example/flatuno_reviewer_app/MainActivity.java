@@ -6,6 +6,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -19,6 +20,7 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.example.flatuno_reviewer_app.database.InitializeData;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,6 +29,20 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        // Initialize database
+        InitializeData initializeData = new InitializeData(this);
+        try {
+            android.util.Log.d("MainActivity", "Starting database initialization");
+            initializeData.initializeDatabase();
+            android.util.Log.d("MainActivity", "Database initialization completed");
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Error initializing database: " + e.getMessage());
+            e.printStackTrace();
+            Toast.makeText(this, "Error initializing database: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        } finally {
+            initializeData.close();
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -37,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         // Setup toolbar
         setupToolbar();
 
-        // Setup bottom navigation
+        // Set up bottom navigation
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnItemSelectedListener(item -> {
             Fragment selectedFragment = null;
@@ -62,7 +78,9 @@ public class MainActivity extends AppCompatActivity {
 
         // Set default fragment
         if (savedInstanceState == null) {
-            bottomNav.setSelectedItemId(R.id.navigation_home);
+            getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, new HomeFragment())
+                .commit();
         }
     }
 

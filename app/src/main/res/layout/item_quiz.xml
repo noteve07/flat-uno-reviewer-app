@@ -32,7 +32,8 @@
             android:id="@+id/last_score"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
+            android:layout_marginTop="8dp"
+            android:textSize="16sp"
             android:fontFamily="@font/poppins_medium"
             android:textColor="@color/toolbar_color"/>
 

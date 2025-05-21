@@ -4,55 +4,68 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:background="@drawable/dialog_background">
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Create New Flashcard Topic"
+        android:text="Add New Flashcard"
         android:textSize="24sp"
-        android:fontFamily="@font/poppins_bold"
+        android:textStyle="bold"
+        android:textColor="@color/black"
         android:layout_marginBottom="24dp"/>
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:boxStrokeColor="@color/toolbar_color"
+        app:hintTextColor="@color/toolbar_color"
+        app:boxCornerRadiusTopStart="12dp"
+        app:boxCornerRadiusTopEnd="12dp"
+        app:boxCornerRadiusBottomStart="12dp"
+        app:boxCornerRadiusBottomEnd="12dp">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/topic_title_input"
+            android:id="@+id/term_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Topic Title"
+            android:hint="Term"
             android:inputType="text"
-            android:maxLines="1"
-            android:fontFamily="@font/poppins_regular"/>
+            android:maxLines="1"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"
-        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        app:boxStrokeColor="@color/toolbar_color"
+        app:hintTextColor="@color/toolbar_color"
+        app:boxCornerRadiusTopStart="12dp"
+        app:boxCornerRadiusTopEnd="12dp"
+        app:boxCornerRadiusBottomStart="12dp"
+        app:boxCornerRadiusBottomEnd="12dp">
 
         <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/topic_subject_input"
+            android:id="@+id/description_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Subject (e.g., Programming, Language, History)"
-            android:inputType="text"
-            android:maxLines="1"
-            android:fontFamily="@font/poppins_regular"/>
+            android:hint="Description"
+            android:inputType="textMultiLine"
+            android:minLines="3"
+            android:gravity="top"/>
     </com.google.android.material.textfield.TextInputLayout>
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Choose Color"
+        android:text="Select Color"
         android:textSize="16sp"
-        android:fontFamily="@font/poppins_medium"
-        android:layout_marginBottom="12dp"/>
+        android:textColor="@color/black"
+        android:layout_marginBottom="16dp"/>
 
     <HorizontalScrollView
         android:layout_width="match_parent"
@@ -61,13 +74,109 @@
         android:layout_marginBottom="24dp">
 
         <LinearLayout
-            android:id="@+id/color_picker"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
 
-            <!-- Color options will be added programmatically -->
-            
+            <ImageView
+                android:id="@+id/color_pink"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_pink"
+                android:contentDescription="Pink color"/>
+
+            <ImageView
+                android:id="@+id/color_green"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_green"
+                android:contentDescription="Green color"/>
+
+            <ImageView
+                android:id="@+id/color_blue"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_blue"
+                android:contentDescription="Blue color"/>
+
+            <ImageView
+                android:id="@+id/color_yellow"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_yellow"
+                android:contentDescription="Yellow color"/>
+
+            <ImageView
+                android:id="@+id/color_purple"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_purple"
+                android:contentDescription="Purple color"/>
+
+            <ImageView
+                android:id="@+id/color_orange"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_orange"
+                android:contentDescription="Orange color"/>
+
+            <ImageView
+                android:id="@+id/color_mint"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_mint"
+                android:contentDescription="Mint color"/>
+
+            <ImageView
+                android:id="@+id/color_lavender"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_lavender"
+                android:contentDescription="Lavender color"/>
+
+            <ImageView
+                android:id="@+id/color_lime"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_lime"
+                android:contentDescription="Lime color"/>
+
+            <ImageView
+                android:id="@+id/color_peach"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/color_circle"
+                android:src="@drawable/color_circle"
+                android:tint="@color/topic_peach"
+                android:contentDescription="Peach color"/>
         </LinearLayout>
     </HorizontalScrollView>
 
@@ -83,13 +192,15 @@
             android:layout_height="wrap_content"
             android:text="Cancel"
             android:layout_marginEnd="8dp"
-            style="@style/Widget.MaterialComponents.Button.TextButton"/>
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:textColor="@color/toolbar_color"/>
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/create_button"
+            android:id="@+id/add_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Create Topic"
-            app:backgroundTint="@color/toolbar_color"/>
+            android:text="Add Flashcard"
+            app:backgroundTint="@color/toolbar_color"
+            app:cornerRadius="12dp"/>
     </LinearLayout>
 </LinearLayout> 

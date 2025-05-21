@@ -32,7 +32,7 @@
             android:textSize="20sp"
             android:textAlignment="center"
             android:fontFamily="@font/poppins_bold"
-            android:textColor="#2C2C2C"
+            android:textColor="#4d4040"
             android:maxLines="2"
             android:ellipsize="end"/>
 
