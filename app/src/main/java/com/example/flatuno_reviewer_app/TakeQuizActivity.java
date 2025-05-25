@@ -145,14 +145,14 @@ public class TakeQuizActivity extends AppCompatActivity {
             android.util.Log.d("TakeQuizActivity", "Found " + choiceCursor.getCount() + " choices for question " + question.getId());
             
             if (choiceCursor.getCount() >= 2) {  // Only add questions that have at least 2 choices
-                while (choiceCursor.moveToNext()) {
-                    QuizChoice choice = new QuizChoice(
-                        question.getId(),
-                        choiceCursor.getString(choiceCursor.getColumnIndexOrThrow("choice_text")),
-                        choiceCursor.getInt(choiceCursor.getColumnIndexOrThrow("is_correct")) == 1
-                    );
-                    choice.setId(choiceCursor.getLong(choiceCursor.getColumnIndexOrThrow("id")));
-                    questionChoices.add(choice);
+            while (choiceCursor.moveToNext()) {
+                QuizChoice choice = new QuizChoice(
+                    question.getId(),
+                    choiceCursor.getString(choiceCursor.getColumnIndexOrThrow("choice_text")),
+                    choiceCursor.getInt(choiceCursor.getColumnIndexOrThrow("is_correct")) == 1
+                );
+                choice.setId(choiceCursor.getLong(choiceCursor.getColumnIndexOrThrow("id")));
+                questionChoices.add(choice);
                 }
                 
                 // Only add questions that have at least one correct choice

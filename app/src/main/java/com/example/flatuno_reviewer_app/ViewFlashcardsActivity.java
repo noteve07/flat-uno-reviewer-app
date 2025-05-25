@@ -10,6 +10,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 import android.graphics.Color;
@@ -316,6 +317,120 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
                 }
                 isFlipped[position] = !isFlipped[position];
             });
+
+            // Set menu button click listener
+            holder.menuButton.setOnClickListener(v -> {
+                android.widget.PopupMenu popup = new android.widget.PopupMenu(v.getContext(), v);
+                popup.getMenuInflater().inflate(R.menu.flashcard_menu, popup.getMenu());
+                
+                popup.setOnMenuItemClickListener(item -> {
+                    int itemId = item.getItemId();
+                    if (itemId == R.id.menu_edit) {
+                        showEditFlashcardDialog(card, position);
+                        return true;
+                    } else if (itemId == R.id.menu_delete) {
+                        showDeleteConfirmationDialog(card, position);
+                        return true;
+                    }
+                    return false;
+                });
+                
+                popup.show();
+            });
+        }
+
+        private void showEditFlashcardDialog(Flashcard card, int position) {
+            android.app.Dialog dialog = new android.app.Dialog(ViewFlashcardsActivity.this);
+            dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.dialog_add_flashcard_card);
+
+            // Initialize views
+            com.google.android.material.textfield.TextInputEditText termInput = dialog.findViewById(R.id.term_input);
+            com.google.android.material.textfield.TextInputEditText descriptionInput = dialog.findViewById(R.id.description_input);
+            com.google.android.material.button.MaterialButton cancelButton = dialog.findViewById(R.id.cancel_button);
+            com.google.android.material.button.MaterialButton addButton = dialog.findViewById(R.id.add_button);
+
+            // Set current values
+            termInput.setText(card.getTerm());
+            descriptionInput.setText(card.getDescription());
+            addButton.setText("Update");
+
+            // Set up button listeners
+            cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+            addButton.setOnClickListener(v -> {
+                String term = termInput.getText().toString().trim();
+                String description = descriptionInput.getText().toString().trim();
+
+                if (term.isEmpty()) {
+                    termInput.setError("Please enter a term");
+                    return;
+                }
+
+                if (description.isEmpty()) {
+                    descriptionInput.setError("Please enter a description");
+                    return;
+                }
+
+                // Update flashcard in database
+                android.content.ContentValues values = new android.content.ContentValues();
+                values.put("term", term);
+                values.put("description", description);
+                values.put("last_reviewed", System.currentTimeMillis());
+
+                int rowsAffected = database.update(
+                    FlashcardDbHelper.TABLE_FLASHCARDS,
+                    values,
+                    "id = ?",
+                    new String[]{String.valueOf(card.getId())}
+                );
+
+                if (rowsAffected > 0) {
+                    // Update local data
+                    card.setTerm(term);
+                    card.setDescription(description);
+                    card.setLastReviewed(System.currentTimeMillis());
+                    notifyItemChanged(position);
+                    dialog.dismiss();
+                    showCustomToast("Flashcard updated successfully");
+                } else {
+                    showCustomToast("Failed to update flashcard");
+                }
+            });
+
+            dialog.show();
+        }
+
+        private void showDeleteConfirmationDialog(Flashcard card, int position) {
+            new androidx.appcompat.app.AlertDialog.Builder(ViewFlashcardsActivity.this)
+                .setTitle("Delete Flashcard")
+                .setMessage("Are you sure you want to delete this flashcard?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    // Delete from database
+                    int rowsAffected = database.delete(
+                        FlashcardDbHelper.TABLE_FLASHCARDS,
+                        "id = ?",
+                        new String[]{String.valueOf(card.getId())}
+                    );
+
+                    if (rowsAffected > 0) {
+                        // Remove from list
+                        flashcards.remove(position);
+                        // Create new array with decreased size
+                        boolean[] newIsFlipped = new boolean[flashcards.size()];
+                        // Copy existing values
+                        System.arraycopy(isFlipped, 0, newIsFlipped, 0, position);
+                        System.arraycopy(isFlipped, position + 1, newIsFlipped, position, flashcards.size() - position);
+                        isFlipped = newIsFlipped;
+                        notifyItemRemoved(position);
+                        updateEmptyState();
+                        showCustomToast("Flashcard deleted successfully");
+                    } else {
+                        showCustomToast("Failed to delete flashcard");
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
         }
 
         @Override
@@ -328,6 +443,7 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
             TextView backText;
             View frontView;
             View backView;
+            ImageButton menuButton;
 
             ViewHolder(View view) {
                 super(view);
@@ -335,6 +451,7 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
                 backText = view.findViewById(R.id.card_back_text);
                 frontView = view.findViewById(R.id.card_front);
                 backView = view.findViewById(R.id.card_back);
+                menuButton = view.findViewById(R.id.menu_button);
             }
         }
     }

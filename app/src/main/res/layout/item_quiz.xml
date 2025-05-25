@@ -1,41 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    android:layout_height="wrap_content">
 
-    <LinearLayout
+    <!-- Quiz card -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/quiz_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_marginBottom="8dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp">
 
-        <TextView
-            android:id="@+id/quiz_title"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="18sp"
-            android:fontFamily="@font/poppins_bold"/>
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="@android:color/white">
 
-        <TextView
-            android:id="@+id/question_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:fontFamily="@font/poppins_regular"
-            android:textColor="#757575"/>
+            <TextView
+                android:id="@+id/quiz_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:fontFamily="@font/poppins_bold"/>
 
-        <TextView
-            android:id="@+id/last_score"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="16sp"
-            android:fontFamily="@font/poppins_medium"
-            android:textColor="@color/toolbar_color"/>
+            <TextView
+                android:id="@+id/question_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:fontFamily="@font/poppins_regular"
+                android:textColor="#757575"/>
 
-    </LinearLayout>
-</androidx.cardview.widget.CardView> 
+            <TextView
+                android:id="@+id/last_score"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="16sp"
+                android:fontFamily="@font/poppins_medium"
+                android:textColor="@color/toolbar_color"/>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout> 

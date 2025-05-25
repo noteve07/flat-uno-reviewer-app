@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import com.example.flatuno_reviewer_app.database.FlashcardDbHelper;
 import com.example.flatuno_reviewer_app.models.Topic;
+import com.google.android.material.snackbar.Snackbar;
 
 public class FlashcardsFragment extends Fragment {
     private RecyclerView recyclerView;
@@ -252,8 +253,237 @@ public class FlashcardsFragment extends Fragment {
                 cardContent.setBackgroundColor(Color.parseColor(topic.getColor()));
             }
 
-            // Set click listener
+            // Set click listener for normal click
             holder.itemView.setOnClickListener(v -> onItemClick(topic));
+
+            // Set long click listener for update/delete options
+            holder.itemView.setOnLongClickListener(v -> {
+                showTopicOptionsDialog(topic, position);
+                return true;
+            });
+        }
+
+        private void showTopicOptionsDialog(Topic topic, int position) {
+            Dialog dialog = new Dialog(requireContext());
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.dialog_topic_options);
+
+            MaterialButton updateButton = dialog.findViewById(R.id.update_button);
+            MaterialButton deleteButton = dialog.findViewById(R.id.delete_button);
+            MaterialButton cancelButton = dialog.findViewById(R.id.cancel_button);
+
+            updateButton.setOnClickListener(v -> {
+                dialog.dismiss();
+                showUpdateTopicDialog(topic, position);
+            });
+
+            deleteButton.setOnClickListener(v -> {
+                dialog.dismiss();
+                showDeleteConfirmationDialog(topic, position);
+            });
+
+            cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+            dialog.show();
+        }
+
+        private void showUpdateTopicDialog(Topic topic, int position) {
+            Dialog dialog = new Dialog(requireContext());
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.dialog_update_topic);
+
+            TextInputEditText titleInput = dialog.findViewById(R.id.topic_name_input);
+            MaterialButton cancelButton = dialog.findViewById(R.id.cancel_button);
+            MaterialButton updateButton = dialog.findViewById(R.id.update_button);
+
+            // Set current topic name
+            titleInput.setText(topic.getName());
+
+            cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+            updateButton.setOnClickListener(v -> {
+                String newName = titleInput.getText().toString().trim();
+                if (newName.isEmpty()) {
+                    titleInput.setError("Please enter a topic name");
+                    return;
+                }
+
+                // Update topic in database
+                android.content.ContentValues values = new android.content.ContentValues();
+                values.put("name", newName);
+                values.put("last_modified", System.currentTimeMillis());
+
+                int rowsAffected = database.update(
+                    FlashcardDbHelper.TABLE_TOPICS,
+                    values,
+                    "id = ?",
+                    new String[]{String.valueOf(topic.getId())}
+                );
+
+                if (rowsAffected > 0) {
+                    // Update local data
+                    topic.setName(newName);
+                    topic.setLastModified(System.currentTimeMillis());
+                    notifyItemChanged(position);
+                    dialog.dismiss();
+                    Toast.makeText(requireContext(), "Topic updated successfully", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(requireContext(), "Failed to update topic", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            dialog.show();
+        }
+
+        private void showDeleteConfirmationDialog(Topic topic, int position) {
+            Dialog dialog = new Dialog(requireContext());
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.dialog_delete_topic);
+
+            TextView messageText = dialog.findViewById(R.id.message_text);
+            MaterialButton cancelButton = dialog.findViewById(R.id.cancel_button);
+            MaterialButton deleteButton = dialog.findViewById(R.id.delete_button);
+
+            messageText.setText("Are you sure you want to delete \"" + topic.getName() + "\"? This will also delete all flashcards and quizzes in this topic.");
+
+            cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+            deleteButton.setOnClickListener(v -> {
+                // Delete topic and all related data from database
+                database.beginTransaction();
+                try {
+                    // Get all quiz IDs for this topic
+                    Cursor quizCursor = database.query(
+                        FlashcardDbHelper.TABLE_QUIZZES,
+                        new String[]{"id"},
+                        "topic_id = ?",
+                        new String[]{String.valueOf(topic.getId())},
+                        null,
+                        null,
+                        null
+                    );
+
+                    List<Long> quizIds = new ArrayList<>();
+                    while (quizCursor.moveToNext()) {
+                        quizIds.add(quizCursor.getLong(quizCursor.getColumnIndexOrThrow("id")));
+                    }
+                    quizCursor.close();
+
+                    // For each quiz, delete its choices and questions
+                    for (Long quizId : quizIds) {
+                        // Get all question IDs for this quiz
+                        Cursor questionCursor = database.query(
+                            FlashcardDbHelper.TABLE_QUIZ_QUESTIONS,
+                            new String[]{"id"},
+                            "quiz_id = ?",
+                            new String[]{String.valueOf(quizId)},
+                            null,
+                            null,
+                            null
+                        );
+
+                        List<Long> questionIds = new ArrayList<>();
+                        while (questionCursor.moveToNext()) {
+                            questionIds.add(questionCursor.getLong(questionCursor.getColumnIndexOrThrow("id")));
+                        }
+                        questionCursor.close();
+
+                        // Delete choices for each question
+                        for (Long questionId : questionIds) {
+                            database.delete(
+                                FlashcardDbHelper.TABLE_QUIZ_CHOICES,
+                                "question_id = ?",
+                                new String[]{String.valueOf(questionId)}
+                            );
+                        }
+
+                        // Delete questions for this quiz
+                        database.delete(
+                            FlashcardDbHelper.TABLE_QUIZ_QUESTIONS,
+                            "quiz_id = ?",
+                            new String[]{String.valueOf(quizId)}
+                        );
+
+                        // Delete quiz scores
+                        database.delete(
+                            FlashcardDbHelper.TABLE_QUIZ_SCORES,
+                            "quiz_id = ?",
+                            new String[]{String.valueOf(quizId)}
+                        );
+                    }
+
+                    // Delete quizzes for this topic
+                    database.delete(
+                        FlashcardDbHelper.TABLE_QUIZZES,
+                        "topic_id = ?",
+                        new String[]{String.valueOf(topic.getId())}
+                    );
+
+                    // Delete flashcards for this topic
+                    database.delete(
+                        FlashcardDbHelper.TABLE_FLASHCARDS,
+                        "topic_id = ?",
+                        new String[]{String.valueOf(topic.getId())}
+                    );
+
+                    // Finally, delete the topic
+                    int topicDeleted = database.delete(
+                        FlashcardDbHelper.TABLE_TOPICS,
+                        "id = ?",
+                        new String[]{String.valueOf(topic.getId())}
+                    );
+
+                    if (topicDeleted > 0) {
+                        database.setTransactionSuccessful();
+                        // Update local data
+                        topics.remove(position);
+                        notifyItemRemoved(position);
+                        dialog.dismiss();
+                        
+                        // Show undo snackbar
+                        View rootView = requireActivity().findViewById(android.R.id.content);
+                        Snackbar snackbar = Snackbar.make(rootView, "Topic deleted", Snackbar.LENGTH_LONG)
+                            .setAction("UNDO", view -> {
+                                // Restore topic and flashcards
+                                restoreTopic(topic, position);
+                            });
+                        snackbar.show();
+                    } else {
+                        Toast.makeText(requireContext(), "Failed to delete topic", Toast.LENGTH_SHORT).show();
+                    }
+                } finally {
+                    database.endTransaction();
+                }
+            });
+
+            dialog.show();
+        }
+
+        private void restoreTopic(Topic topic, int position) {
+            database.beginTransaction();
+            try {
+                // Restore topic
+                android.content.ContentValues topicValues = new android.content.ContentValues();
+                topicValues.put("name", topic.getName());
+                topicValues.put("color", topic.getColor());
+                topicValues.put("created_at", topic.getCreatedAt());
+                topicValues.put("last_modified", System.currentTimeMillis());
+
+                long topicId = database.insert(FlashcardDbHelper.TABLE_TOPICS, null, topicValues);
+                
+                if (topicId != -1) {
+                    database.setTransactionSuccessful();
+                    // Update local data
+                    topic.setId(topicId);
+                    topics.add(position, topic);
+                    notifyItemInserted(position);
+                    Toast.makeText(requireContext(), "Topic restored", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(requireContext(), "Failed to restore topic", Toast.LENGTH_SHORT).show();
+                }
+            } finally {
+                database.endTransaction();
+            }
         }
 
         @Override

@@ -1,5 +1,7 @@
 package com.example.flatuno_reviewer_app;
 
+import android.app.AlertDialog;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -8,9 +10,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -65,6 +69,9 @@ public class QuizFragment extends Fragment {
         // Set up adapter
         adapter = new QuizAdapter(quizzes);
         recyclerView.setAdapter(adapter);
+
+        // Set up swipe functionality
+        setupSwipeActions();
 
         // FAB click listener
         FloatingActionButton fab = view.findViewById(R.id.fab_add_quiz);
@@ -179,6 +186,201 @@ public class QuizFragment extends Fragment {
         cursor.close();
         
         return quizList;
+    }
+
+    private void setupSwipeActions() {
+        ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0, 
+            ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
+            
+            private static final float SWIPE_THRESHOLD = 0.25f; // 25% of item width
+            private static final float SWIPE_VELOCITY_THRESHOLD = 0.5f;
+            
+            @Override
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, 
+                                RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                Quiz quiz = quizzes.get(position);
+
+                if (direction == ItemTouchHelper.RIGHT) {
+                    // Delete quiz
+                    showDeleteConfirmationDialog(quiz);
+                } else if (direction == ItemTouchHelper.LEFT) {
+                    // Edit quiz
+                    showEditDialog(quiz);
+                }
+            }
+
+            @Override
+            public float getSwipeThreshold(RecyclerView.ViewHolder viewHolder) {
+                return SWIPE_THRESHOLD;
+            }
+
+            @Override
+            public float getSwipeVelocityThreshold(float defaultValue) {
+                return defaultValue * SWIPE_VELOCITY_THRESHOLD;
+            }
+
+            @Override
+            public void onChildDraw(android.graphics.Canvas c, RecyclerView recyclerView, 
+                                  RecyclerView.ViewHolder viewHolder, float dX, float dY, 
+                                  int actionState, boolean isCurrentlyActive) {
+                View itemView = viewHolder.itemView;
+                float maxSwipeDistance = itemView.getWidth() * 0.3f; // 30% of item width
+                
+                // Limit swipe distance
+                if (dX > 0) { // Swiping right (delete)
+                    dX = Math.min(dX, maxSwipeDistance);
+                } else if (dX < 0) { // Swiping left (edit)
+                    dX = Math.max(dX, -maxSwipeDistance);
+                }
+                
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+            }
+        };
+
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(swipeCallback);
+        itemTouchHelper.attachToRecyclerView(recyclerView);
+    }
+
+    private void showDeleteConfirmationDialog(Quiz quiz) {
+        new AlertDialog.Builder(requireContext())
+            .setTitle("Delete Quiz")
+            .setMessage("Are you sure you want to delete this quiz? This action cannot be undone.")
+            .setPositiveButton("Delete", (dialog, which) -> {
+                deleteQuiz(quiz);
+            })
+            .setNegativeButton("Cancel", (dialog, which) -> {
+                adapter.notifyItemChanged(quizzes.indexOf(quiz));
+            })
+            .setCancelable(false)
+            .show();
+    }
+
+    private void deleteQuiz(Quiz quiz) {
+        database.beginTransaction();
+        try {
+            // Get all question IDs for this quiz
+            Cursor questionCursor = database.query(
+                FlashcardDbHelper.TABLE_QUIZ_QUESTIONS,
+                new String[]{"id"},
+                "quiz_id = ?",
+                new String[]{String.valueOf(quiz.getId())},
+                null,
+                null,
+                null
+            );
+
+            List<Long> questionIds = new ArrayList<>();
+            while (questionCursor.moveToNext()) {
+                questionIds.add(questionCursor.getLong(questionCursor.getColumnIndexOrThrow("id")));
+            }
+            questionCursor.close();
+
+            // Delete choices for each question
+            for (Long questionId : questionIds) {
+                database.delete(
+                    FlashcardDbHelper.TABLE_QUIZ_CHOICES,
+                    "question_id = ?",
+                    new String[]{String.valueOf(questionId)}
+                );
+            }
+
+            // Delete questions
+            database.delete(
+                FlashcardDbHelper.TABLE_QUIZ_QUESTIONS,
+                "quiz_id = ?",
+                new String[]{String.valueOf(quiz.getId())}
+            );
+
+            // Delete quiz scores
+            database.delete(
+                FlashcardDbHelper.TABLE_QUIZ_SCORES,
+                "quiz_id = ?",
+                new String[]{String.valueOf(quiz.getId())}
+            );
+
+            // Delete quiz
+            database.delete(
+                FlashcardDbHelper.TABLE_QUIZZES,
+                "id = ?",
+                new String[]{String.valueOf(quiz.getId())}
+            );
+
+            database.setTransactionSuccessful();
+            
+            // Update UI
+            int position = quizzes.indexOf(quiz);
+            quizzes.remove(position);
+            adapter.notifyItemRemoved(position);
+            
+            Toast.makeText(requireContext(), "Quiz deleted successfully", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), "Error deleting quiz", Toast.LENGTH_SHORT).show();
+        } finally {
+            database.endTransaction();
+        }
+    }
+
+    private void showEditDialog(Quiz quiz) {
+        // Create dialog for editing quiz title
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_edit_quiz, null);
+        
+        TextView titleInput = dialogView.findViewById(R.id.quiz_title_input);
+        titleInput.setText(quiz.getTitle());
+        
+        builder.setView(dialogView)
+            .setTitle("Edit Quiz")
+            .setPositiveButton("Save", (dialog, which) -> {
+                String newTitle = titleInput.getText().toString().trim();
+                if (!newTitle.isEmpty()) {
+                    updateQuizTitle(quiz, newTitle);
+                } else {
+                    Toast.makeText(requireContext(), "Title cannot be empty", Toast.LENGTH_SHORT).show();
+                    adapter.notifyItemChanged(quizzes.indexOf(quiz));
+                }
+            })
+            .setNegativeButton("Cancel", (dialog, which) -> {
+                adapter.notifyItemChanged(quizzes.indexOf(quiz));
+            })
+            .setCancelable(false)
+            .show();
+    }
+
+    private void updateQuizTitle(Quiz quiz, String newTitle) {
+        database.beginTransaction();
+        try {
+            ContentValues values = new ContentValues();
+            values.put("title", newTitle);
+            
+            int rowsAffected = database.update(
+                FlashcardDbHelper.TABLE_QUIZZES,
+                values,
+                "id = ?",
+                new String[]{String.valueOf(quiz.getId())}
+            );
+            
+            if (rowsAffected > 0) {
+                quiz.setTitle(newTitle);
+                adapter.notifyItemChanged(quizzes.indexOf(quiz));
+                Toast.makeText(requireContext(), "Quiz updated successfully", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(requireContext(), "Error updating quiz", Toast.LENGTH_SHORT).show();
+                adapter.notifyItemChanged(quizzes.indexOf(quiz));
+            }
+            
+            database.setTransactionSuccessful();
+        } catch (Exception e) {
+            Toast.makeText(requireContext(), "Error updating quiz", Toast.LENGTH_SHORT).show();
+            adapter.notifyItemChanged(quizzes.indexOf(quiz));
+        } finally {
+            database.endTransaction();
+        }
     }
 
     // RecyclerView Adapter

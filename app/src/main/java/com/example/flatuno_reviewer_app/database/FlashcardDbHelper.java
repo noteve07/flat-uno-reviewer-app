@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class FlashcardDbHelper extends SQLiteOpenHelper {
     // Database Version
-    private static final int DATABASE_VERSION = 4;
+    private static final int DATABASE_VERSION = DatabaseConfig.DATABASE_VERSION;
     private static final String DATABASE_NAME = "flatuno.db";
 
     // Table Names
@@ -140,15 +140,18 @@ public class FlashcardDbHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Drop older tables if existed
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_QUIZ_SCORES);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_QUIZ_CHOICES);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_QUIZ_QUESTIONS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_QUIZZES);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_FLASHCARDS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_TOPICS);
+        // Only reset database if RESET_DATABASE flag is set to 1
+        if (DatabaseConfig.RESET_DATABASE == 1) {
+            // Drop older tables if existed
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_QUIZ_SCORES);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_QUIZ_CHOICES);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_QUIZ_QUESTIONS);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_QUIZZES);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_FLASHCARDS);
+            db.execSQL("DROP TABLE IF EXISTS " + TABLE_TOPICS);
 
-        // Create tables again
-        onCreate(db);
+            // Create tables again
+            onCreate(db);
+        }
     }
 } 

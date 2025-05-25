@@ -47,7 +47,8 @@ public class InitializeData {
     }
 
     public void initializeIfEmpty() {
-        if (isDatabaseEmpty()) {
+        // Only initialize if database is empty or if reset flag is set to 1
+        if (isDatabaseEmpty() || DatabaseConfig.RESET_DATABASE == 1) {
             initializeDatabase();
         }
     }
@@ -62,112 +63,116 @@ public class InitializeData {
             // Start transaction
             db.beginTransaction();
             
-            // Delete tables in correct order to respect foreign key constraints
-            db.delete("quiz_choices", null, null);
-            db.delete("quiz_questions", null, null);
-            db.delete("quizzes", null, null);
-            db.delete("flashcards", null, null);
-            db.delete("topics", null, null);
-            
-            android.util.Log.d("InitializeData", "Cleared all tables");
-            
-            // Insert sample topics with colors from resources
-            long algoId = insertTopic(db, "Divide and Conquer", getNextColor());
-            long greedyId = insertTopic(db, "Greedy Algorithm", getNextColor());
-            long androidId = insertTopic(db, "Using Intents in Android Studio", getNextColor());
-            long oopId = insertTopic(db, "OOP Principles", getNextColor());
-            long rizalId = insertTopic(db, "Early Education of Rizal", getNextColor());
-            long germanId = insertTopic(db, "German Verbs", getNextColor());
-            
-            if (algoId == -1 || androidId == -1 || oopId == -1 || rizalId == -1 || germanId == -1) {
-                throw new RuntimeException("Failed to insert topics");
+            // Only delete existing data if reset flag is set to 1
+            if (DatabaseConfig.RESET_DATABASE == 1) {
+                // Delete tables in correct order to respect foreign key constraints
+                db.delete("quiz_choices", null, null);
+                db.delete("quiz_questions", null, null);
+                db.delete("quizzes", null, null);
+                db.delete("flashcards", null, null);
+                db.delete("topics", null, null);
+                
+                android.util.Log.d("InitializeData", "Cleared all tables");
             }
             
-            android.util.Log.d("InitializeData", "Inserted topics with IDs: " + algoId + ", " + androidId + ", " + oopId + ", " + rizalId + ", " + germanId);
-            
-            // Insert sample flashcards
-            android.util.Log.d("InitializeData", "Starting flashcard insertion");
-            
-            // Insert flashcards for Divide and Conquer
-            insertFlashcard(db, algoId, "Merge Sort", "A divide and conquer algorithm that recursively breaks down a problem into two or more sub-problems until they become simple enough to solve directly.");
-            insertFlashcard(db, algoId, "Quick Sort", "A divide and conquer algorithm that picks an element as pivot and partitions the array around the pivot.");
-            insertFlashcard(db, algoId, "Binary Search", "A search algorithm that finds the position of a target value within a sorted array by repeatedly dividing the search interval in half.");
-
-            // Insert flashcards for Greedy Algorithm
-            insertFlashcard(db, greedyId, "Activity Selection", "Selects the maximum number of activities that don't overlap, by always choosing the next activity that finishes earliest.");
-            insertFlashcard(db, greedyId, "Fractional Knapsack", "Solves the knapsack problem by taking items with the highest value-to-weight ratio first, allowing fractions of items.");
-            insertFlashcard(db, greedyId, "Huffman Coding", "A lossless data compression algorithm that builds an optimal prefix code using a greedy approach based on character frequencies.");
-
-            // Insert flashcards for Android Intents
-            insertFlashcard(db, androidId, "Explicit Intent", "An intent that explicitly specifies the component to start by name.");
-            insertFlashcard(db, androidId, "Implicit Intent", "An intent that specifies an action that can be handled by any app installed on the device.");
-            insertFlashcard(db, androidId, "Intent Filters", "Declarations in the manifest that specify the types of intents a component can handle.");
-            
-            // Insert flashcards for OOP
-            insertFlashcard(db, oopId, "Encapsulation", "Bundling of data and methods that operate on that data within a single unit or object.");
-            insertFlashcard(db, oopId, "Inheritance", "A mechanism that allows a class to inherit properties and methods from another class.");
-            insertFlashcard(db, oopId, "Polymorphism", "The ability of an object to take many forms and behave differently based on the context.");
-            
-            // Insert flashcards for Rizal
-            insertFlashcard(db, rizalId, "Ateneo Municipal", "Rizal's secondary education where he excelled in academics and won numerous awards.");
-            insertFlashcard(db, rizalId, "University of Santo Tomas", "Where Rizal initially studied medicine before transferring to Spain.");
-            insertFlashcard(db, rizalId, "Universidad Central de Madrid", "Where Rizal completed his medical degree and studied philosophy and letters.");
-            
-            // Insert flashcards for German
-            insertFlashcard(db, germanId, "Sein", "To be - ich bin, du bist, er/sie/es ist");
-            insertFlashcard(db, germanId, "Haben", "To have - ich habe, du hast, er/sie/es hat");
-            insertFlashcard(db, germanId, "Werden", "To become - ich werde, du wirst, er/sie/es wird");
-            
-            android.util.Log.d("InitializeData", "Finished flashcard insertion");
-            
-            // Insert sample quizzes
-            long algoQuizId = insertQuiz(db, algoId, "Divide and Conquer Basics");
-            long androidQuizId = insertQuiz(db, androidId, "Android Intents Quiz");
-            long oopQuizId = insertQuiz(db, oopId, "OOP Concepts");
-            long rizalQuizId = insertQuiz(db, rizalId, "Rizal's Education");
-            long germanQuizId = insertQuiz(db, germanId, "German Verb Conjugation");
-            
-            if (algoQuizId == -1 || androidQuizId == -1 || oopQuizId == -1 || rizalQuizId == -1 || germanQuizId == -1) {
-                throw new RuntimeException("Failed to insert quizzes");
-            }
-            
-            // Insert quiz questions and choices
-            insertAlgoQuizQuestions(db, algoQuizId);
-            insertAndroidQuizQuestions(db, androidQuizId);
-            insertOOPQuizQuestions(db, oopQuizId);
-            insertRizalQuizQuestions(db, rizalQuizId);
-            insertGermanQuizQuestions(db, germanQuizId);
-            
-            // Verify that questions were inserted
-            Cursor questionCursor = db.query(
-                "quiz_questions",
-                new String[]{"COUNT(*) as count"},
-                null,
-                null,
-                null,
-                null,
-                null
-            );
-            
-            if (questionCursor.moveToFirst()) {
-                int questionCount = questionCursor.getInt(questionCursor.getColumnIndexOrThrow("count"));
-                if (questionCount == 0) {
-                    throw new RuntimeException("No quiz questions were inserted");
+            // Only insert sample data if database is empty
+            if (isDatabaseEmpty()) {
+                // Insert sample topics with colors from resources
+                long algoId = insertTopic(db, "Divide and Conquer", getNextColor());
+                long greedyId = insertTopic(db, "Greedy Algorithm", getNextColor());
+                long androidId = insertTopic(db, "Using Intents in Android Studio", getNextColor());
+                long oopId = insertTopic(db, "OOP Principles", getNextColor());
+                long rizalId = insertTopic(db, "Early Education of Rizal", getNextColor());
+                long germanId = insertTopic(db, "German Verbs", getNextColor());
+                
+                if (algoId == -1 || androidId == -1 || oopId == -1 || rizalId == -1 || germanId == -1) {
+                    throw new RuntimeException("Failed to insert topics");
                 }
-                android.util.Log.d("InitializeData", "Successfully inserted " + questionCount + " quiz questions");
+                
+                android.util.Log.d("InitializeData", "Inserted topics with IDs: " + algoId + ", " + androidId + ", " + oopId + ", " + rizalId + ", " + germanId);
+                
+                // Insert sample flashcards
+                android.util.Log.d("InitializeData", "Starting flashcard insertion");
+                
+                // Insert flashcards for Divide and Conquer
+                insertFlashcard(db, algoId, "Merge Sort", "A divide and conquer algorithm that recursively breaks down a problem into two or more sub-problems until they become simple enough to solve directly.");
+                insertFlashcard(db, algoId, "Quick Sort", "A divide and conquer algorithm that picks an element as pivot and partitions the array around the pivot.");
+                insertFlashcard(db, algoId, "Binary Search", "A search algorithm that finds the position of a target value within a sorted array by repeatedly dividing the search interval in half.");
+
+                // Insert flashcards for Greedy Algorithm
+                insertFlashcard(db, greedyId, "Activity Selection", "Selects the maximum number of activities that don't overlap, by always choosing the next activity that finishes earliest.");
+                insertFlashcard(db, greedyId, "Fractional Knapsack", "Solves the knapsack problem by taking items with the highest value-to-weight ratio first, allowing fractions of items.");
+                insertFlashcard(db, greedyId, "Huffman Coding", "A lossless data compression algorithm that builds an optimal prefix code using a greedy approach based on character frequencies.");
+
+                // Insert flashcards for Android Intents
+                insertFlashcard(db, androidId, "Explicit Intent", "An intent that explicitly specifies the component to start by name.");
+                insertFlashcard(db, androidId, "Implicit Intent", "An intent that specifies an action that can be handled by any app installed on the device.");
+                insertFlashcard(db, androidId, "Intent Filters", "Declarations in the manifest that specify the types of intents a component can handle.");
+                
+                // Insert flashcards for OOP
+                insertFlashcard(db, oopId, "Encapsulation", "Bundling of data and methods that operate on that data within a single unit or object.");
+                insertFlashcard(db, oopId, "Inheritance", "A mechanism that allows a class to inherit properties and methods from another class.");
+                insertFlashcard(db, oopId, "Polymorphism", "The ability of an object to take many forms and behave differently based on the context.");
+                
+                // Insert flashcards for Rizal
+                insertFlashcard(db, rizalId, "Ateneo Municipal", "Rizal's secondary education where he excelled in academics and won numerous awards.");
+                insertFlashcard(db, rizalId, "University of Santo Tomas", "Where Rizal initially studied medicine before transferring to Spain.");
+                insertFlashcard(db, rizalId, "Universidad Central de Madrid", "Where Rizal completed his medical degree and studied philosophy and letters.");
+                
+                // Insert flashcards for German
+                insertFlashcard(db, germanId, "Sein", "To be - ich bin, du bist, er/sie/es ist");
+                insertFlashcard(db, germanId, "Haben", "To have - ich habe, du hast, er/sie/es hat");
+                insertFlashcard(db, germanId, "Werden", "To become - ich werde, du wirst, er/sie/es wird");
+                
+                android.util.Log.d("InitializeData", "Finished flashcard insertion");
+                
+                // Insert sample quizzes
+                long algoQuizId = insertQuiz(db, algoId, "Divide and Conquer Basics");
+                long androidQuizId = insertQuiz(db, androidId, "Android Intents Quiz");
+                long oopQuizId = insertQuiz(db, oopId, "OOP Concepts");
+                long rizalQuizId = insertQuiz(db, rizalId, "Rizal's Education");
+                long germanQuizId = insertQuiz(db, germanId, "German Verb Conjugation");
+                
+                if (algoQuizId == -1 || androidQuizId == -1 || oopQuizId == -1 || rizalQuizId == -1 || germanQuizId == -1) {
+                    throw new RuntimeException("Failed to insert quizzes");
+                }
+                
+                // Insert quiz questions and choices
+                insertAlgoQuizQuestions(db, algoQuizId);
+                insertAndroidQuizQuestions(db, androidQuizId);
+                insertOOPQuizQuestions(db, oopQuizId);
+                insertRizalQuizQuestions(db, rizalQuizId);
+                insertGermanQuizQuestions(db, germanQuizId);
+                
+                // Verify that questions were inserted
+                Cursor questionCursor = db.query(
+                    "quiz_questions",
+                    new String[]{"COUNT(*) as count"},
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                );
+                
+                if (questionCursor.moveToFirst()) {
+                    int questionCount = questionCursor.getInt(questionCursor.getColumnIndexOrThrow("count"));
+                    if (questionCount == 0) {
+                        throw new RuntimeException("No quiz questions were inserted");
+                    }
+                    android.util.Log.d("InitializeData", "Successfully inserted " + questionCount + " quiz questions");
+                }
+                questionCursor.close();
             }
-            questionCursor.close();
             
-            // Mark transaction as successful
+            // Commit transaction
             db.setTransactionSuccessful();
             android.util.Log.d("InitializeData", "Database initialization completed successfully");
             
         } catch (Exception e) {
             android.util.Log.e("InitializeData", "Error initializing database: " + e.getMessage());
-            e.printStackTrace();
-            // Transaction will be rolled back automatically
+            throw e;
         } finally {
-            // End transaction
             db.endTransaction();
         }
         
