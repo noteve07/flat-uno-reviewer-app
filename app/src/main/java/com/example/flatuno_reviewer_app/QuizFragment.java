@@ -69,7 +69,8 @@ public class QuizFragment extends Fragment {
         // FAB click listener
         FloatingActionButton fab = view.findViewById(R.id.fab_add_quiz);
         fab.setOnClickListener(v -> {
-            // TODO: Implement add quiz functionality
+            Intent intent = new Intent(getActivity(), GenerateQuizActivity.class);
+            startActivity(intent);
         });
 
         return view;

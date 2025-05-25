@@ -120,6 +120,8 @@ public class TakeQuizActivity extends AppCompatActivity {
             return;
         }
         
+        boolean hasValidQuestions = false;
+        
         while (questionCursor.moveToNext()) {
             QuizQuestion question = new QuizQuestion(
                 quizId,
@@ -127,9 +129,6 @@ public class TakeQuizActivity extends AppCompatActivity {
                 questionCursor.getString(questionCursor.getColumnIndexOrThrow("correct_answer"))
             );
             question.setId(questionCursor.getLong(questionCursor.getColumnIndexOrThrow("id")));
-            questions.add(question);
-            
-            android.util.Log.d("TakeQuizActivity", "Loaded question: " + question.getQuestion());
             
             // Load choices for this question
             List<QuizChoice> questionChoices = new ArrayList<>();
@@ -145,33 +144,44 @@ public class TakeQuizActivity extends AppCompatActivity {
             
             android.util.Log.d("TakeQuizActivity", "Found " + choiceCursor.getCount() + " choices for question " + question.getId());
             
-            if (choiceCursor.getCount() == 0) {
-                Toast.makeText(this, "No choices found for question: " + question.getQuestion(), Toast.LENGTH_SHORT).show();
-                finish();
-                return;
-            }
-            
-            while (choiceCursor.moveToNext()) {
-                QuizChoice choice = new QuizChoice(
-                    question.getId(),
-                    choiceCursor.getString(choiceCursor.getColumnIndexOrThrow("choice_text")),
-                    choiceCursor.getInt(choiceCursor.getColumnIndexOrThrow("is_correct")) == 1
-                );
-                choice.setId(choiceCursor.getLong(choiceCursor.getColumnIndexOrThrow("id")));
-                questionChoices.add(choice);
+            if (choiceCursor.getCount() >= 2) {  // Only add questions that have at least 2 choices
+                while (choiceCursor.moveToNext()) {
+                    QuizChoice choice = new QuizChoice(
+                        question.getId(),
+                        choiceCursor.getString(choiceCursor.getColumnIndexOrThrow("choice_text")),
+                        choiceCursor.getInt(choiceCursor.getColumnIndexOrThrow("is_correct")) == 1
+                    );
+                    choice.setId(choiceCursor.getLong(choiceCursor.getColumnIndexOrThrow("id")));
+                    questionChoices.add(choice);
+                }
                 
-                android.util.Log.d("TakeQuizActivity", "Loaded choice: " + choice.getChoiceText() + " (correct: " + choice.isCorrect() + ")");
+                // Only add questions that have at least one correct choice
+                boolean hasCorrectChoice = false;
+                for (QuizChoice choice : questionChoices) {
+                    if (choice.isCorrect()) {
+                        hasCorrectChoice = true;
+                        break;
+                    }
+                }
+                
+                if (hasCorrectChoice) {
+                    questions.add(question);
+                    Collections.shuffle(questionChoices);
+                    choices.add(questionChoices);
+                    hasValidQuestions = true;
+                }
             }
             choiceCursor.close();
-            
-            // Shuffle choices
-            Collections.shuffle(questionChoices);
-            choices.add(questionChoices);
         }
         questionCursor.close();
         
-        // Questions will stay in their original order
-        android.util.Log.d("TakeQuizActivity", "Finished loading quiz data. Total questions: " + questions.size());
+        if (!hasValidQuestions) {
+            Toast.makeText(this, "This quiz has no valid questions with choices. Please regenerate the quiz.", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        
+        android.util.Log.d("TakeQuizActivity", "Finished loading quiz data. Valid questions: " + questions.size());
     }
     
     private void displayQuestion() {

@@ -5,17 +5,17 @@ public class Quiz {
     private String title;
     private long topicId;
     private long createdAt;
-    private long lastModified;
+    private long lastTaken;
     private int questionCount;
     private String lastScore;
     private String topicName;
 
-    public Quiz(long id, String title, long topicId, long createdAt, long lastModified) {
+    public Quiz(long id, String title, long topicId, long createdAt, long lastTaken) {
         this.id = id;
         this.title = title;
         this.topicId = topicId;
         this.createdAt = createdAt;
-        this.lastModified = lastModified;
+        this.lastTaken = lastTaken;
         this.questionCount = 0;
         this.lastScore = "Not attempted yet";
     }
@@ -33,8 +33,8 @@ public class Quiz {
     public long getCreatedAt() { return createdAt; }
     public void setCreatedAt(long createdAt) { this.createdAt = createdAt; }
 
-    public long getLastModified() { return lastModified; }
-    public void setLastModified(long lastModified) { this.lastModified = lastModified; }
+    public long getLastTaken() { return lastTaken; }
+    public void setLastTaken(long lastTaken) { this.lastTaken = lastTaken; }
 
     public int getQuestionCount() { return questionCount; }
     public void setQuestionCount(int questionCount) { this.questionCount = questionCount; }

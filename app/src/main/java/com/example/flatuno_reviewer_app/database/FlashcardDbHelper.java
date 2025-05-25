@@ -18,42 +18,42 @@ public class FlashcardDbHelper extends SQLiteOpenHelper {
     public static final String TABLE_QUIZ_SCORES = "quiz_scores";
 
     // Common column names
-    private static final String KEY_ID = "id";
-    private static final String KEY_CREATED_AT = "created_at";
+    public static final String KEY_ID = "id";
+    public static final String KEY_CREATED_AT = "created_at";
 
     // TOPICS Table Columns
-    private static final String KEY_TOPIC_NAME = "name";
-    private static final String KEY_TOPIC_COLOR = "color";
-    private static final String KEY_TOPIC_LAST_MODIFIED = "last_modified";
+    public static final String KEY_TOPIC_NAME = "name";
+    public static final String KEY_TOPIC_COLOR = "color";
+    public static final String KEY_TOPIC_LAST_MODIFIED = "last_modified";
 
     // FLASHCARDS Table Columns
-    private static final String KEY_FLASHCARD_TOPIC_ID = "topic_id";
-    private static final String KEY_FLASHCARD_TERM = "term";
-    private static final String KEY_FLASHCARD_DESCRIPTION = "description";
-    private static final String KEY_FLASHCARD_LAST_REVIEWED = "last_reviewed";
-    private static final String KEY_FLASHCARD_COLOR = "color";
+    public static final String KEY_FLASHCARD_TOPIC_ID = "topic_id";
+    public static final String KEY_FLASHCARD_TERM = "term";
+    public static final String KEY_FLASHCARD_DESCRIPTION = "description";
+    public static final String KEY_FLASHCARD_LAST_REVIEWED = "last_reviewed";
+    public static final String KEY_FLASHCARD_COLOR = "color";
 
     // QUIZZES Table Columns
-    private static final String KEY_QUIZ_TOPIC_ID = "topic_id";
-    private static final String KEY_QUIZ_TITLE = "title";
-    private static final String KEY_QUIZ_LAST_TAKEN = "last_taken";
+    public static final String KEY_QUIZ_TOPIC_ID = "topic_id";
+    public static final String KEY_QUIZ_TITLE = "title";
+    public static final String KEY_QUIZ_LAST_TAKEN = "last_taken";
 
     // QUIZ_QUESTIONS Table Columns
-    private static final String KEY_QUESTION_QUIZ_ID = "quiz_id";
-    private static final String KEY_QUESTION_TEXT = "question";
-    private static final String KEY_QUESTION_CORRECT_ANSWER = "correct_answer";
+    public static final String KEY_QUESTION_QUIZ_ID = "quiz_id";
+    public static final String KEY_QUESTION_TEXT = "question";
+    public static final String KEY_QUESTION_CORRECT_ANSWER = "correct_answer";
 
     // QUIZ_CHOICES Table Columns
-    private static final String KEY_CHOICE_QUESTION_ID = "question_id";
-    private static final String KEY_CHOICE_TEXT = "choice_text";
-    private static final String KEY_CHOICE_IS_CORRECT = "is_correct";
+    public static final String KEY_CHOICE_QUESTION_ID = "question_id";
+    public static final String KEY_CHOICE_TEXT = "choice_text";
+    public static final String KEY_CHOICE_IS_CORRECT = "is_correct";
 
     // QUIZ_SCORES Table Columns
-    private static final String KEY_SCORE_QUIZ_ID = "quiz_id";
-    private static final String KEY_SCORE_VALUE = "score";
-    private static final String KEY_SCORE_TOTAL_QUESTIONS = "total_questions";
-    private static final String KEY_SCORE_TAKEN_AT = "taken_at";
-    private static final String KEY_SCORE_TIME_SPENT = "time_spent";
+    public static final String KEY_SCORE_QUIZ_ID = "quiz_id";
+    public static final String KEY_SCORE_VALUE = "score";
+    public static final String KEY_SCORE_TOTAL_QUESTIONS = "total_questions";
+    public static final String KEY_SCORE_TAKEN_AT = "taken_at";
+    public static final String KEY_SCORE_TIME_SPENT = "time_spent";
 
     // Create Table Statements
     private static final String CREATE_TABLE_TOPICS = "CREATE TABLE " + TABLE_TOPICS + "("
