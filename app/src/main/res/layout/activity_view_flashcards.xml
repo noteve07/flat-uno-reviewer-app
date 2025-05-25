@@ -15,6 +15,18 @@
             android:padding="16dp"
             android:clipToPadding="false"/>
 
+        <!-- Voice button -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/voice_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:src="@drawable/ic_mic"
+            android:contentDescription="Voice control"
+            app:backgroundTint="@color/toolbar_color"
+            app:tint="@android:color/white"/>
+
         <!-- Empty state -->
         <LinearLayout
             android:id="@+id/empty_state"

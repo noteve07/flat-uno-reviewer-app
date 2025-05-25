@@ -1,8 +1,19 @@
 package com.example.flatuno_reviewer_app;
 
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
+import android.content.pm.PackageManager;
+import android.Manifest;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +28,8 @@ import android.graphics.Color;
 import android.graphics.Camera;
 import android.graphics.Matrix;
 import android.view.animation.Transformation;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.button.MaterialButton;
@@ -26,6 +39,23 @@ import com.example.flatuno_reviewer_app.database.FlashcardDbHelper;
 import com.example.flatuno_reviewer_app.models.Flashcard;
 
 public class ViewFlashcardsActivity extends AppCompatActivity {
+    private static final int PERMISSION_REQUEST_CODE = 1;
+    private static final int SAMPLE_RATE = 44100;
+    private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
+    private static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
+    private static final int BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
+    private static final int AMPLITUDE_THRESHOLD = 3000; // Increased from 1000 to 5000 - only detect louder/closer sounds
+    private static final int PRE_FLIP_DELAY = 1500; // Wait 2 seconds after sound before flipping
+    private static final int POST_FLIP_DELAY = 1500; // Wait 1.5 seconds after flip before next card
+    private static final int DEBUG_UPDATE_INTERVAL = 1000; // Show debug info every 1 second
+
+    private AudioRecord audioRecord;
+    private boolean isRecording = false;
+    private Thread recordingThread;
+    private ImageButton voiceButton;
+    private long lastFlipTime = 0;
+    private boolean canFlip = true;
+    private boolean isWaitingForFlip = false;
     private ViewPager2 viewPager;
     private FlashcardAdapter adapter;
     private List<Flashcard> flashcards;
@@ -36,11 +66,21 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
     private String topicColor;
     private FlashcardDbHelper dbHelper;
     private SQLiteDatabase database;
+    private Handler debugHandler = new Handler(Looper.getMainLooper());
+    private double lastAmplitude = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_view_flashcards);
+
+        // Initialize voice button first
+        voiceButton = findViewById(R.id.voice_button);
+        voiceButton.setOnClickListener(v -> {
+            if (checkAndRequestPermission()) {
+                toggleAudioRecording();
+            }
+        });
 
         // Initialize database
         dbHelper = new FlashcardDbHelper(this);
@@ -92,8 +132,24 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        // Stop recording when activity is paused
+        stopAudioRecording();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Stop recording when activity is stopped
+        stopAudioRecording();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
+        // Stop recording and clean up
+        stopAudioRecording();
         if (database != null && database.isOpen()) {
             database.close();
         }
@@ -438,7 +494,7 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
             return flashcards.size();
         }
 
-        class ViewHolder extends androidx.recyclerview.widget.RecyclerView.ViewHolder {
+        public class ViewHolder extends androidx.recyclerview.widget.RecyclerView.ViewHolder {
             TextView frontText;
             TextView backText;
             View frontView;
@@ -452,6 +508,9 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
                 frontView = view.findViewById(R.id.card_front);
                 backView = view.findViewById(R.id.card_back);
                 menuButton = view.findViewById(R.id.menu_button);
+                
+                // Initialize the tag to track flip state
+                view.setTag(false);
             }
         }
     }
@@ -494,6 +553,202 @@ public class ViewFlashcardsActivity extends AppCompatActivity {
             
             if (degrees > 90 || degrees < -90) {
                 matrix.preScale(-1, 1, view.getWidth() / 2, view.getHeight() / 2);
+            }
+        }
+    }
+
+    private boolean checkAndRequestPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+                    != PackageManager.PERMISSION_GRANTED) {
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Microphone Permission Required")
+                    .setMessage("Sound detection needs microphone access to work. Please grant permission.")
+                    .setPositiveButton("Grant Permission", (dialog, which) -> {
+                        ActivityCompat.requestPermissions(this, 
+                            new String[]{Manifest.permission.RECORD_AUDIO}, 
+                            PERMISSION_REQUEST_CODE);
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void toggleAudioRecording() {
+        if (!isRecording) {
+            // Only start if we have permission
+            if (checkAndRequestPermission()) {
+                startAudioRecording();
+            }
+        } else {
+            stopAudioRecording();
+        }
+    }
+
+    private void startAudioRecording() {
+        // Don't start if already recording
+        if (isRecording) return;
+
+        if (audioRecord == null) {
+            audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                    SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, BUFFER_SIZE);
+        }
+
+        if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
+            isRecording = true;
+            audioRecord.startRecording();
+            voiceButton.setImageResource(R.drawable.ic_mic_active);
+            Toast.makeText(this, "Voice recognition ON - Speak your answer", Toast.LENGTH_SHORT).show();
+
+            // Start debug updates
+            startDebugUpdates();
+
+            recordingThread = new Thread(() -> {
+                short[] buffer = new short[BUFFER_SIZE];
+                while (isRecording) {
+                    try {
+                        int read = audioRecord.read(buffer, 0, BUFFER_SIZE);
+                        if (read > 0 && isRecording) { // Double check isRecording
+                            // Calculate average amplitude
+                            double sum = 0;
+                            for (int i = 0; i < read; i++) {
+                                sum += Math.abs(buffer[i]);
+                            }
+                            lastAmplitude = sum / read;
+
+                            // Check if sound level is above threshold and we're not in a waiting period
+                            long currentTime = System.currentTimeMillis();
+                            if (lastAmplitude > AMPLITUDE_THRESHOLD && canFlip && !isWaitingForFlip && 
+                                (currentTime - lastFlipTime) > (PRE_FLIP_DELAY + POST_FLIP_DELAY)) {
+                                
+                                // Start the flip sequence
+                                isWaitingForFlip = true;
+                                canFlip = false;
+                                
+                                // Store current position before starting the sequence
+                                final int currentPosition = viewPager.getCurrentItem();
+                                
+                                // Show that we heard something
+                                new Handler(Looper.getMainLooper()).post(() -> {
+                                    if (isRecording) { // Check if still recording
+                                        showCustomToast("Answer detected! Preparing to flip...");
+                                    }
+                                });
+
+                                // Wait 2 seconds before flipping
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    if (!isRecording) return; // Stop if no longer recording
+                                    
+                                    // Get the current view and flip
+                                    View currentView = ((ViewGroup) viewPager.getChildAt(0)).getChildAt(0);
+                                    if (currentView != null) {
+                                        currentView.performClick();
+                                        showCustomToast("Flipping card...");
+                                        lastFlipTime = System.currentTimeMillis();
+                                        
+                                        // Wait 1.5 seconds after flip before moving to next card
+                                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                            if (!isRecording) return; // Stop if no longer recording
+                                            
+                                            // Use the stored position to check if we're at the last card
+                                            if (currentPosition < flashcards.size() - 1) {
+                                                // Move to next card
+                                                viewPager.setCurrentItem(currentPosition + 1, true);
+                                                showCustomToast("Moving to next card...");
+                                            } else {
+                                                // We're at the last card, finish
+                                                showCustomToast("Last card reached - finishing...");
+                                                finish();
+                                            }
+                                            
+                                            // Reset state for next answer
+                                            isWaitingForFlip = false;
+                                            canFlip = true;
+                                        }, POST_FLIP_DELAY);
+                                    }
+                                }, PRE_FLIP_DELAY);
+                            }
+                        }
+                    } catch (Exception e) {
+                        // If there's an error, stop recording
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            stopAudioRecording();
+                            Toast.makeText(ViewFlashcardsActivity.this, 
+                                "Error in voice recognition: " + e.getMessage(), 
+                                Toast.LENGTH_SHORT).show();
+                        });
+                        break;
+                    }
+                }
+            });
+            recordingThread.start();
+        } else {
+            Toast.makeText(this, "Failed to initialize voice recognition. Error code: " + 
+                audioRecord.getState(), Toast.LENGTH_LONG).show();
+            stopAudioRecording();
+        }
+    }
+
+    private void startDebugUpdates() {
+        debugHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (isRecording) {
+                    String status = isWaitingForFlip ? "Waiting..." : "Listening...";
+                    // Show the current amplitude as a percentage of the threshold
+                    int percentage = (int)((lastAmplitude / AMPLITUDE_THRESHOLD) * 100);
+                    String debugMsg = String.format("%s Sound level: %d%% (Need: 100%%)", 
+                        status, Math.min(percentage, 100));
+                    Toast.makeText(ViewFlashcardsActivity.this, debugMsg, Toast.LENGTH_SHORT).show();
+                    
+                    // Schedule next update
+                    debugHandler.postDelayed(this, DEBUG_UPDATE_INTERVAL);
+                }
+            }
+        }, DEBUG_UPDATE_INTERVAL);
+    }
+
+    private void stopAudioRecording() {
+        isRecording = false;
+        isWaitingForFlip = false;
+        canFlip = true;
+        debugHandler.removeCallbacksAndMessages(null); // Stop debug updates
+        
+        if (audioRecord != null) {
+            try {
+                audioRecord.stop();
+                audioRecord.release();
+            } catch (Exception e) {
+                // Ignore errors during cleanup
+            }
+            audioRecord = null;
+        }
+        
+        if (recordingThread != null) {
+            recordingThread.interrupt();
+            recordingThread = null;
+        }
+        
+        voiceButton.setImageResource(R.drawable.ic_mic);
+        Toast.makeText(this, "Voice recognition OFF", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, can start recording
+            } else {
+                Toast.makeText(this, 
+                    "Sound detection requires microphone permission. Please grant it in Settings.", 
+                    Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                intent.setData(android.net.Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
             }
         }
     }
