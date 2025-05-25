@@ -41,6 +41,12 @@
         <activity
             android:name=".GenerateQuizActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".CreateQuizActivity"
+            android:exported="false"
+            android:label="Create Quiz"
+            android:parentActivityName=".MainActivity" />
     </application>
 
 </manifest>

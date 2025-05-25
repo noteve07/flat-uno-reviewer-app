@@ -19,10 +19,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import android.widget.PopupMenu;
 import java.util.ArrayList;
 import java.util.List;
 import com.example.flatuno_reviewer_app.database.FlashcardDbHelper;
 import com.example.flatuno_reviewer_app.models.Quiz;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 public class QuizFragment extends Fragment {
     private RecyclerView recyclerView;
@@ -73,11 +75,28 @@ public class QuizFragment extends Fragment {
         // Set up swipe functionality
         setupSwipeActions();
 
-        // FAB click listener
+        // FAB click listener with popup menu
         FloatingActionButton fab = view.findViewById(R.id.fab_add_quiz);
         fab.setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), GenerateQuizActivity.class);
-            startActivity(intent);
+            PopupMenu popup = new PopupMenu(requireContext(), fab, android.view.Gravity.TOP);
+            popup.getMenuInflater().inflate(R.menu.menu_add_quiz, popup.getMenu());
+            
+            // Show the popup
+            popup.show();
+            
+            popup.setOnMenuItemClickListener(item -> {
+                int itemId = item.getItemId();
+                if (itemId == R.id.action_add_manual) {
+                    Intent intent = new Intent(getActivity(), CreateQuizActivity.class);
+                    startActivity(intent);
+                    return true;
+                } else if (itemId == R.id.action_generate_ai) {
+                    Intent intent = new Intent(getActivity(), GenerateQuizActivity.class);
+                    startActivity(intent);
+                    return true;
+                }
+                return false;
+            });
         });
 
         return view;

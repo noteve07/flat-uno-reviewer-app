@@ -10,4 +10,11 @@
         <item name="android:textSize">12sp</item>
         <item name="android:fontFamily">@font/poppins_regular</item>
     </style>
+
+    <style name="PopupMenuStyle" parent="Widget.MaterialComponents.PopupMenu">
+        <item name="android:popupBackground">@drawable/popup_background</item>
+        <item name="android:textColor">@android:color/black</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:padding">8dp</item>
+    </style>
 </resources>

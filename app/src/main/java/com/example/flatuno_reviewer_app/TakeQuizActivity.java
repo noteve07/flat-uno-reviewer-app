@@ -185,104 +185,115 @@ public class TakeQuizActivity extends AppCompatActivity {
     }
     
     private void displayQuestion() {
-        QuizQuestion currentQuestion = questions.get(currentQuestionIndex);
-        List<QuizChoice> currentChoices = choices.get(currentQuestionIndex);
-        
-        // Update progress
-        progressTextView.setText(String.format("Question %d of %d", currentQuestionIndex + 1, questions.size()));
-        
-        // Set question text with dark gray color and larger font
-        questionTextView.setText(currentQuestion.getQuestion());
-        questionTextView.setTextColor(getResources().getColor(R.color.dark_gray));
-        questionTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22); // Increased from 20sp
-        
-        // Clear previous choices
-        choicesContainer.removeAllViews();
-        
-        // Add new choices
-        for (QuizChoice choice : currentChoices) {
-            MaterialButton choiceButton = new MaterialButton(this);
-            choiceButton.setText(choice.getChoiceText());
-            choiceButton.setTextColor(getResources().getColor(R.color.dark_gray));
-            choiceButton.setStrokeColor(ColorStateList.valueOf(getResources().getColor(R.color.toolbar_color)));
-            choiceButton.setStrokeWidth(4);
-            choiceButton.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white)));
-            choiceButton.setTypeface(ResourcesCompat.getFont(this, R.font.poppins_medium));
-            choiceButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-            choiceButton.setPadding(32, 32, 32, 32);
-            choiceButton.setCornerRadius(12);
-            choiceButton.setElevation(4);
+        try {
+            if (questions.isEmpty()) {
+                Toast.makeText(this, "No questions available for this quiz", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
+
+            QuizQuestion currentQuestion = questions.get(currentQuestionIndex);
+            List<QuizChoice> currentChoices = choices.get(currentQuestionIndex);
             
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            );
-            params.setMargins(0, 0, 0, 16);
-            choiceButton.setLayoutParams(params);
+            // Update progress
+            progressTextView.setText(String.format("Question %d of %d", currentQuestionIndex + 1, questions.size()));
             
-            choiceButton.setOnClickListener(v -> {
-                // Disable all buttons
-                for (int i = 0; i < choicesContainer.getChildCount(); i++) {
-                    View child = choicesContainer.getChildAt(i);
-                    child.setEnabled(false);
-                }
+            // Set question text with dark gray color and larger font
+            questionTextView.setText(currentQuestion.getQuestion());
+            questionTextView.setTextColor(getResources().getColor(R.color.dark_gray));
+            questionTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22); // Increased from 20sp
+            
+            // Clear previous choices
+            choicesContainer.removeAllViews();
+            
+            // Add new choices
+            for (QuizChoice choice : currentChoices) {
+                MaterialButton choiceButton = new MaterialButton(this);
+                choiceButton.setText(choice.getChoiceText());
+                choiceButton.setTextColor(getResources().getColor(R.color.dark_gray));
+                choiceButton.setStrokeColor(ColorStateList.valueOf(getResources().getColor(R.color.toolbar_color)));
+                choiceButton.setStrokeWidth(4);
+                choiceButton.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(android.R.color.white)));
+                choiceButton.setTypeface(ResourcesCompat.getFont(this, R.font.poppins_medium));
+                choiceButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+                choiceButton.setPadding(32, 32, 32, 32);
+                choiceButton.setCornerRadius(12);
+                choiceButton.setElevation(4);
                 
-                // Show correct/incorrect feedback
-                if (choice.getChoiceText().equals(currentQuestion.getCorrectAnswer())) {
-                    choiceButton.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.correct_green)));
-                    choiceButton.setTextColor(getResources().getColor(android.R.color.white));
-                    choiceButton.setStrokeWidth(0);
-                    score++; // Only increment score if the answer is correct
-                    correctSound.start();
-                } else {
-                    choiceButton.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.incorrect_red)));
-                    choiceButton.setTextColor(getResources().getColor(android.R.color.white));
-                    choiceButton.setStrokeWidth(0);
-                    incorrectSound.start();
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+                params.setMargins(0, 0, 0, 16);
+                choiceButton.setLayoutParams(params);
+                
+                choiceButton.setOnClickListener(v -> {
+                    // Disable all buttons
+                    for (int i = 0; i < choicesContainer.getChildCount(); i++) {
+                        View child = choicesContainer.getChildAt(i);
+                        child.setEnabled(false);
+                    }
                     
-                    // Show correct answer after a short delay
-                    handler.postDelayed(() -> {
-                        for (int i = 0; i < choicesContainer.getChildCount(); i++) {
-                            View child = choicesContainer.getChildAt(i);
-                            if (child instanceof MaterialButton) {
-                                MaterialButton button = (MaterialButton) child;
-                                if (button.getText().toString().equals(currentQuestion.getCorrectAnswer())) {
-                                    button.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.correct_green)));
-                                    button.setTextColor(getResources().getColor(android.R.color.white));
-                                    button.setStrokeWidth(0);
-                                    break;
+                    // Show correct/incorrect feedback
+                    if (choice.getChoiceText().equals(currentQuestion.getCorrectAnswer())) {
+                        choiceButton.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.correct_green)));
+                        choiceButton.setTextColor(getResources().getColor(android.R.color.white));
+                        choiceButton.setStrokeWidth(0);
+                        score++; // Only increment score if the answer is correct
+                        correctSound.start();
+                    } else {
+                        choiceButton.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.incorrect_red)));
+                        choiceButton.setTextColor(getResources().getColor(android.R.color.white));
+                        choiceButton.setStrokeWidth(0);
+                        incorrectSound.start();
+                        
+                        // Show correct answer after a short delay
+                        handler.postDelayed(() -> {
+                            for (int i = 0; i < choicesContainer.getChildCount(); i++) {
+                                View child = choicesContainer.getChildAt(i);
+                                if (child instanceof MaterialButton) {
+                                    MaterialButton button = (MaterialButton) child;
+                                    if (button.getText().toString().equals(currentQuestion.getCorrectAnswer())) {
+                                        button.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.correct_green)));
+                                        button.setTextColor(getResources().getColor(android.R.color.white));
+                                        button.setStrokeWidth(0);
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                    }, 500); // 0.5 second delay
-                }
-                
-                // Wait 2 seconds then move to next question with animation
-                handler.postDelayed(() -> {
-                    if (currentQuestionIndex < questions.size() - 1) {
-                        // Animate current view out to the left
-                        choicesContainer.animate()
-                            .translationX(-getResources().getDisplayMetrics().widthPixels)
-                            .setDuration(300)
-                            .withEndAction(() -> {
-                                currentQuestionIndex++;
-                                // Reset position before showing next question
-                                choicesContainer.setTranslationX(getResources().getDisplayMetrics().widthPixels);
-                                displayQuestion();
-                                // Animate new question in from the right
-                                choicesContainer.animate()
-                                    .translationX(0)
-                                    .setDuration(300)
-                                    .start();
-                            })
-                            .start();
-                    } else {
-                        showResults();
+                        }, 500); // 0.5 second delay
                     }
-                }, 2000);
-            });
-            
-            choicesContainer.addView(choiceButton);
+                    
+                    // Wait 2 seconds then move to next question with animation
+                    handler.postDelayed(() -> {
+                        if (currentQuestionIndex < questions.size() - 1) {
+                            // Animate current view out to the left
+                            choicesContainer.animate()
+                                .translationX(-getResources().getDisplayMetrics().widthPixels)
+                                .setDuration(300)
+                                .withEndAction(() -> {
+                                    currentQuestionIndex++;
+                                    // Reset position before showing next question
+                                    choicesContainer.setTranslationX(getResources().getDisplayMetrics().widthPixels);
+                                    displayQuestion();
+                                    // Animate new question in from the right
+                                    choicesContainer.animate()
+                                        .translationX(0)
+                                        .setDuration(300)
+                                        .start();
+                                })
+                                .start();
+                        } else {
+                            showResults();
+                        }
+                    }, 2000);
+                });
+                
+                choicesContainer.addView(choiceButton);
+            }
+        } catch (IndexOutOfBoundsException e) {
+            Toast.makeText(this, "No questions available for this quiz", Toast.LENGTH_SHORT).show();
+            finish();
         }
     }
     
