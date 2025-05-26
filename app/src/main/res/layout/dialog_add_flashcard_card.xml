@@ -30,7 +30,7 @@
             android:id="@+id/term_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Term"
+            android:hint="Topic"
             android:inputType="text"
             android:maxLines="1"/>
 
